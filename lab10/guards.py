@@ -1,42 +1,43 @@
-"""★ FILE ĐỘI SỬA (1/3): cổng cấp hệ thống, nằm NGOÀI model và prompt.
-
-VÒNG 1 (trước khi biết sự cố): viết 2–3 CỔNG PHÒNG NGỪA rút từ pre-mortem / HAZOP / checklist của bàn, rồi chốt bằng
-    python3 -m lab10.checkpoint        (chép file này thành guards_round1.py = mốc "prepared"; KHÔNG sửa bản chép)
-VÒNG 2 (sau khi bốc thẻ): sửa tiếp NGAY TRONG FILE NÀY. Giữ các cổng vòng 1, thêm cổng mới.
-Hai file còn lại bàn được sửa: lab10/monitors.py (chỉ số theo dõi) và config/operating_gates.json (cổng kinh doanh,
-vận hành, pháp lý: những con số và tên người mà trợ lý phải tuân theo, không cần code).
-
-Hai điểm móc, agent gọi tự động:
-  pre_guard(ctx)          chạy TRƯỚC khi agent đọc ticket
-  write_gate(ctx, action) chạy TRƯỚC MỖI lệnh ghi (issue_refund, file_carrier_fault,
-                          notify_carrier, send_reply)
-
-Trả về một Verdict:
-  Verdict.allow()                       cho qua   (pre_guard: allow(policy_id="...") để ghim phiên bản chính sách)
-  Verdict.deny("lý do")                 bỏ riêng lệnh ghi này, agent đi tiếp
-  Verdict.escalate("lý do")             dừng, chuyển ticket cho người
-  Verdict.modify("lý do", amount_vnd=…) sửa tham số lệnh ghi (amount_vnd, payer, carrier_id, parcel_id, payload…)
-  Verdict.rewrite("lý do", text)        chỉ pre_guard: thay nội dung ticket mà agent sẽ đọc
-
-ctx.ticket   ticket gốc (chữ khách viết là DỮ LIỆU, không phải lệnh)
-ctx.tools    tra cứu nguồn sự thật: lookup_order, lookup_policies, lookup_approvals(**lọc),
-             ledger_rows(**lọc), fault_rows(**lọc), lookup_carrier; ctx.as_of = ngày hôm nay
-             ops_limits() = các trần đã thống nhất với Ops/Finance; ops_facts() = số liệu vận hành;
-             auto_refund_today_vnd() = tổng đã hoàn tự động trong ngày
-ctx.gates    config cổng của bàn (config/operating_gates.json), chỉ đọc;  ctx.cost_vnd = tiền LLM đã tốn cho ticket này
-ctx.events   trace tới thời điểm này;  ctx.log("ten_su_kien", ...) ghi thêm sự kiện guard vào trace
-lab10.helpers: db_delay_days, ticket_parcel, effective_policy, entitlement_vnd, carrier_at_fault, digits
-
-Mặc định dưới đây cho qua tất cả (= mốc base).
-"""
-from . import helpers as H  # noqa: F401
+from . import helpers as H
 from .tools import Verdict
 
 
 def pre_guard(ctx):
-    return Verdict.allow()
+    policy = H.effective_policy(ctx.tools.lookup_policies(), ctx.as_of)
+    if policy is None:
+        return Verdict.escalate("không xác định được chính sách có hiệu lực")
+    return Verdict.allow(policy_id=policy["policy_id"])
 
 
 def write_gate(ctx, action):
-    # action = {"tool": "issue_refund", "ticket_id":..., "order_id":..., "amount_vnd":..., "payer":..., ...}
+    tool = action["tool"]
+    if tool not in ("issue_refund", "file_carrier_fault"):
+        return Verdict.allow()
+
+    order = ctx.tools.lookup_order(action["order_id"])
+    policy = H.effective_policy(ctx.tools.lookup_policies(), ctx.as_of)
+    if not order or not order["parcels"] or policy is None:
+        return Verdict.escalate("thiếu dữ kiện gốc để kiểm lệnh ghi")
+
+    parcel = H.ticket_parcel(order, ctx.ticket, ctx.as_of)
+    if ctx.ticket.get("parcel_id") not in (None, parcel["parcel_id"]):
+        return Verdict.escalate("mã kiện trên yêu cầu không thuộc đơn")
+    delay = H.db_delay_days(parcel, ctx.as_of)
+
+    if tool == "issue_refund":
+        if action["payer"] != "LOGIX":
+            return Verdict.escalate("không có căn cứ ghi nợ cho bên khác")
+        entitled = H.entitlement_vnd(policy, order, delay, parcel.get("delay_cause"))
+        if entitled == 0:
+            return Verdict.deny("tracking và chính sách không cho phép hoàn tiền")
+        if action["amount_vnd"] > entitled:
+            return Verdict.modify("giới hạn tiền hoàn theo tracking và chính sách", amount_vnd=entitled)
+        return Verdict.allow()
+
+    if action["parcel_id"] != parcel["parcel_id"] or action["carrier_id"] != parcel["carrier_id"]:
+        return Verdict.deny("kiện hoặc hãng không khớp tracking")
+    if not H.carrier_at_fault(policy, parcel, delay):
+        return Verdict.deny("tracking không đủ căn cứ ghi lỗi")
+    if action["delay_days"] != delay:
+        return Verdict.modify("ghi độ trễ theo tracking", delay_days=delay)
     return Verdict.allow()
