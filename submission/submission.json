@@ -1,12 +1,14 @@
 {
-  "team": "",
-  "members": [],
-  "incident": "",
-  "decision_v1": "",
-  "decision_v2": "",
+  "team": "K5-L3B-DAY10-Thd-PoCtoPilotGate1",
+  "members": [
+    "DoMinhThanh-2A202603793"
+  ],
+  "incident": "S1",
+  "decision_v1": "Tiếp tục",
+  "decision_v2": "Tiếp tục",
   "three_lines": {
-    "environment_assumption": "",
-    "reduce_or_prevent": "",
-    "measure_in_pilot": ""
+    "environment_assumption": "Thiết kế giả định tracking cập nhật trạng thái đã giao cùng ngày giao trước khi CSKH xử lý, nhưng 10/65 lượt S1 đụng dữ liệu thiếu ngày giao.",
+    "reduce_or_prevent": "Trong mô phỏng, cổng ngăn ghi khi kiện đã giao thiếu ngày và chặn lỗi tự động thứ 3 của cùng hãng trong ngày, còn tracking đủ trường nhưng sai và ghi song song vẫn phải kiểm soát.",
+    "measure_in_pilot": "Trước Gate 2, đo tỷ lệ kiện DELIVERED thiếu hoặc sai ngày so với chứng từ hãng, thời gian xác minh và SLA 60 phút, đồng thời thử nhiều worker để kiểm giới hạn 2 lỗi tự động mỗi hãng mỗi ngày."
   }
 }

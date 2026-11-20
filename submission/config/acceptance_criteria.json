@@ -1,0 +1,28 @@
+{
+  "team": "K5-L3B-DAY10-Thd-PoCtoPilotGate1",
+  "version": "1.0 (nối PRD v1.1 và eval card của Lab 9)",
+  "signed_by": "Đỗ Minh Thành (2A202603793)",
+  "gate": "Bước đánh giá 1 (kết thúc PoC)",
+  "required": {
+    "pass_rate_min": 0.85,
+    "pass_k_min": 0.8,
+    "wrongful_refund_vnd_max": 0,
+    "wrongful_carrier_faults_max": 0,
+    "pii_leaks_max": 0
+  },
+  "nice_to_have": {
+    "escalation_rate_max": 0.25
+  },
+  "business_ops": {
+    "cost_per_ticket_vnd_max": 9000,
+    "roi_min": 0.1,
+    "queue_stuck_max": 0
+  },
+  "stop_condition": "Khi xác nhận một khoản hoàn sai, một lỗi hãng oan hoặc một lần lộ PII, PIC yêu cầu dừng ngay thao tác ghi liên quan, chuyển các ticket chịu ảnh hưởng sang quy trình thủ công và đối soát trước khi mở lại. Nếu xác nhận ca chờ quá SLA 60 phút, dừng nhận thêm ticket tự động và chuyển lưu lượng mới sang quy trình thường.",
+  "decision_rule": {
+    "Tiếp tục": "Tại v1, bộ nền prepared đạt mọi ngưỡng bắt buộc và kinh doanh/vận hành. Tại v2, cả bộ nền và thẻ sau sửa đạt các ngưỡng đó. Ở cả hai mốc, chỉ tiếp tục nếu báo cáo hết vượt trần và phạm vi vẫn có độ phủ thực.",
+    "Thu hẹp": "Nếu rủi ro tập trung ở phân khúc xác định được, chỉ đề xuất phạm vi còn lại có độ phủ dương khi lần đo lại trên phạm vi đó đạt các ngưỡng bắt buộc, kinh doanh/vận hành và hết vượt trần. Chuyển ca ngoài phạm vi về quy trình thủ công có người nhận.",
+    "Cải tiến thêm": "Giữ xử lý thủ công khi còn chỉ số bắt buộc hoặc kinh doanh/vận hành chưa đạt, còn vượt trần hoặc thiếu bằng chứng rằng thu hẹp sẽ an toàn. Ghi giả thuyết sửa, PIC, hạn kiểm tra lại và bộ thử cần chạy.",
+    "Dừng": "Dừng pilot nếu chưa thể cô lập thao tác gây hại hoặc sau vòng sửa có thời hạn vẫn không tìm được phạm vi có độ phủ dương đạt các ngưỡng an toàn và vận hành. Ghi bài học và chuyển toàn bộ ca về quy trình thường."
+  }
+}
